@@ -192,7 +192,64 @@ button:hover {
 .page-footer {
     text-align: center;
     padding: 18px;
+    
     background-color: #1d3557;
     color: white;
     margin-top: 24px;
 }
+/* Change 4: Mobile Responsiveness Improved */
+
+@media (max-width: 768px) {
+
+    .game-window-wrap,
+    .container {
+        width: 95%;
+    }
+
+    .game-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    #gameArea {
+        height: 400px;
+    }
+
+    #bat {
+        width: 100px;
+        height: 18px;
+    }
+
+    button {
+        width: 100%;
+        font-size: 1rem;
+    }
+
+    .button-row {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 480px) {
+
+    .game-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #gameArea {
+        height: 320px;
+    }
+
+    h1 {
+        font-size: 1.6rem;
+    }
+
+    h2 {
+        font-size: 1.2rem;
+    }
+
+    .card {
+        padding: 14px;
+    }
+}
+
+/* End Change 4 */
