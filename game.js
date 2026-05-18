@@ -9,22 +9,23 @@ const gameState = {
   lives: 3,
   running: false,
 
-  // NEW SETTINGS
   batColour: settings.batColour || "blue",
   doubleScore: settings.doubleScore || false,
   showShadow: settings.showShadow || false,
-  randomSizes: settings.randomSizes || false
+  randomSizes: settings.randomSizes || false,
+
+  // Change 1: Countdown Timer Added
+  timer: 60,
+  timerInterval: null,
+  // End Change 1
+
+  // Change 3: High Score System Added
+  highScore: localStorage.getItem("skyHighScore") || 0
+  // End Change 3
 };
 
-// Elements
 const gameArea = document.getElementById("gameArea");
 const bat = document.getElementById("bat");
-
-bat.style.background = gameState.batColour;
-
-if (gameState.showShadow) {
-  bat.style.boxShadow = "0 5px 10px rgba(0,0,0,0.5)";
-}
 
 const displayPlayer = document.getElementById("displayPlayer");
 const displayScore = document.getElementById("displayScore");
@@ -32,75 +33,165 @@ const displayCaught = document.getElementById("displayCaught");
 const displayMissed = document.getElementById("displayMissed");
 const displayLives = document.getElementById("displayLives");
 const displayDifficulty = document.getElementById("displayDifficulty");
+const displayTimer = document.getElementById("displayTimer");
+const displayHighScore = document.getElementById("displayHighScore");
 
 const messageArea = document.getElementById("messageArea");
 const logArea = document.getElementById("logArea");
 
-// Buttons
-document.getElementById("startBtn").addEventListener("click", startGame);
-document.getElementById("pauseBtn").addEventListener("click", togglePause);
-document.getElementById("resetBtn").addEventListener("click", resetGame);
-document.getElementById("saveBtn").addEventListener("click", saveGame);
-document.getElementById("loadBtn").addEventListener("click", loadGame);
-document.getElementById("backBtn").addEventListener("click", goBack);
+const startBtn = document.getElementById("startBtn");
+const pauseBtn = document.getElementById("pauseBtn");
+const saveBtn = document.getElementById("saveBtn");
+const loadBtn = document.getElementById("loadBtn");
+const resetBtn = document.getElementById("resetBtn");
+const backBtn = document.getElementById("backBtn");
 
-// Display initial values
-displayPlayer.textContent = gameState.player;
-displayDifficulty.textContent = gameState.difficulty;
+bat.style.background = gameState.batColour;
 
-// Move bat
-document.addEventListener("mousemove", (e) => {
-  const rect = gameArea.getBoundingClientRect();
-  let x = e.clientX - rect.left;
-  let max = gameArea.clientWidth - bat.offsetWidth;
-if (x < 0) x = 0;
-if (x > max) x = max;
-  bat.style.left = x + "px";
+function updateDisplay() {
+  displayPlayer.textContent = gameState.player;
+  displayScore.textContent = gameState.score;
+  displayCaught.textContent = gameState.caught;
+  displayMissed.textContent = gameState.missed;
+  displayLives.textContent = gameState.lives;
+  displayDifficulty.textContent = gameState.difficulty;
+  displayTimer.textContent = gameState.timer;
+  displayHighScore.textContent = gameState.highScore;
+}
+
+updateDisplay();
+
+function log(text) {
+  const entry = document.createElement("div");
+  entry.textContent = text;
+  logArea.prepend(entry);
+}
+
+function getSpeed() {
+  switch (gameState.difficulty) {
+    case "easy":
+      return 1400;
+    case "medium":
+      return 1000;
+    case "hard":
+      return 700;
+    default:
+      return 1000;
+  }
+}
+
+// Change 2: Sound Effects Added
+function playCatchSound() {
+  const audio = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg");
+  audio.play();
+}
+
+function playMissSound() {
+  const audio = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+  audio.play();
+}
+
+function playGameOverSound() {
+  const audio = new Audio("https://actions.google.com/sounds/v1/cartoon/concussive_drum_hit.ogg");
+  audio.play();
+}
+// End Change 2
+
+startBtn.addEventListener("click", startGame);
+pauseBtn.addEventListener("click", togglePause);
+saveBtn.addEventListener("click", saveGame);
+loadBtn.addEventListener("click", loadGame);
+resetBtn.addEventListener("click", resetGame);
+backBtn.addEventListener("click", goBack);
+
+let batX = 380;
+
+document.addEventListener("keydown", (e) => {
+
+  if (e.key === "ArrowLeft") {
+    batX -= 25;
+  }
+
+  if (e.key === "ArrowRight") {
+    batX += 25;
+  }
+
+  const max = gameArea.clientWidth - bat.offsetWidth;
+
+  if (batX < 0) batX = 0;
+  if (batX > max) batX = max;
+
+  bat.style.left = batX + "px";
 });
 
-// Start Game
 function startGame() {
-  if (gameState.running) return; 
+
+  if (gameState.running) return;
 
   gameState.running = true;
 
   messageArea.textContent = "Game started!";
   log("Game started");
 
+  // Change 1: Countdown Timer Added
+  gameState.timerInterval = setInterval(() => {
+
+    gameState.timer--;
+
+    displayTimer.textContent = gameState.timer;
+
+    if (gameState.timer <= 0) {
+
+      clearInterval(gameState.timerInterval);
+
+      gameOver();
+    }
+
+  }, 1000);
+  // End Change 1
+
   spawnLoop();
 }
 
-// Pause
 function togglePause() {
+
   gameState.running = !gameState.running;
+
   messageArea.textContent = gameState.running ? "Resumed" : "Paused";
+
   log(gameState.running ? "Game resumed" : "Game paused");
 }
 
-// Reset
 function resetGame() {
-  if (!confirm("Reset game?")) return;
 
   gameState.score = 0;
   gameState.caught = 0;
   gameState.missed = 0;
   gameState.lives = 3;
 
+  // Change 1: Timer Reset Added
+  gameState.timer = 60;
+  clearInterval(gameState.timerInterval);
+  // End Change 1
+
   updateDisplay();
+
   messageArea.textContent = "Game reset.";
+
   log("Game reset");
 }
 
-// Save (LOCAL STORAGE)
 function saveGame() {
+
   localStorage.setItem("skyGame", JSON.stringify(gameState));
+
   messageArea.textContent = "Game saved!";
+
   log("Game saved");
 }
 
-// Load (LOCAL STORAGE)
-gameState.running = false;
 function loadGame() {
+
   const data = JSON.parse(localStorage.getItem("skyGame"));
 
   if (!data) {
@@ -108,54 +199,34 @@ function loadGame() {
     return;
   }
 
-  // Restore game state
   Object.assign(gameState, data);
-
-  // Clear old objects
-  document.querySelectorAll(".falling-object").forEach(el => el.remove());
 
   updateDisplay();
 
   messageArea.textContent = "Game loaded!";
-  log("Game loaded");
 
-  // Restart game loop if it was running
-  if (gameState.running) {
-    spawnLoop();
-  }
+  log("Game loaded");
 }
 
-// Back button
 function goBack() {
   window.location.href = "index.html";
 }
 
-// Spawn loop
 function spawnLoop() {
+
   if (!gameState.running) return;
 
-  console.log("SPAWNING..."); 
-
   createItem();
-  setTimeout(spawnLoop,  getSpeed());
+
+  setTimeout(spawnLoop, getSpeed());
 }
 
-// falling objects
 function createItem() {
+
   const item = document.createElement("div");
+
   item.classList.add("falling-object");
 
-  // Random sizes feature
-  if (gameState.randomSizes) {
-    let size = Math.random() * 30 + 20;
-    item.style.width = size + "px";
-    item.style.height = size + "px";
-  } else {
-    item.style.width = "30px";
-    item.style.height = "30px";
-  }
-
-  // Bonus items
   if (Math.random() < 0.2) {
     item.classList.add("bonus");
     item.dataset.value = 5;
@@ -167,16 +238,20 @@ function createItem() {
   item.style.top = "0px";
 
   gameArea.appendChild(item);
+
   fall(item);
 }
-// Falling logic
+
 function fall(item) {
+
   let pos = 0;
 
   const interval = setInterval(() => {
+
     if (!gameState.running) return;
 
     pos += 5;
+
     item.style.top = pos + "px";
 
     const itemRect = item.getBoundingClientRect();
@@ -187,37 +262,62 @@ function fall(item) {
       itemRect.left < batRect.right &&
       itemRect.right > batRect.left
     ) {
+
       catchItem(item);
+
       clearInterval(interval);
     }
 
     if (pos > gameArea.clientHeight) {
+
       missItem(item);
+
       clearInterval(interval);
     }
+
   }, 50);
 }
 
-// Catch
 function catchItem(item) {
+
   let value = parseInt(item.dataset.value);
 
-if (gameState.doubleScore) {
-  value *= 2;
-}
-gameState.score += value;
+  if (gameState.doubleScore) {
+    value *= 2;
+  }
+
+  gameState.score += value;
   gameState.caught++;
 
+  // Change 2: Catch Sound Added
+  playCatchSound();
+  // End Change 2
+
+  // Change 3: High Score System Added
+  if (gameState.score > gameState.highScore) {
+
+    gameState.highScore = gameState.score;
+
+    localStorage.setItem("skyHighScore", gameState.highScore);
+  }
+  // End Change 3
+
   item.remove();
+
   updateDisplay();
 }
 
-// Miss
 function missItem(item) {
+
   gameState.missed++;
   gameState.lives--;
 
+  // Change 2: Miss Sound Added
+  playMissSound();
+  // End Change 2
+
   item.remove();
+
   updateDisplay();
 
   if (gameState.lives <= 0) {
@@ -225,34 +325,19 @@ function missItem(item) {
   }
 }
 
-// Game Over
 function gameOver() {
+
   gameState.running = false;
-  alert("Game Over! Score: " + gameState.score);
 
-  document.cookie = `bestScore=${gameState.score}`;
-  log("Game over");
-}
+  clearInterval(gameState.timerInterval);
 
-// Update UI
-function updateDisplay() {
-  displayScore.textContent = gameState.score;
-  displayCaught.textContent = gameState.caught;
-  displayMissed.textContent = gameState.missed;
-  displayLives.textContent = gameState.lives;
-}
+  // Change 2: Game Over Sound Added
+  playGameOverSound();
+  // End Change 2
 
-// Log system (ARRAY usage)
-let logs = [];
+  messageArea.textContent = "Game Over!";
 
-function log(message) {
-  logs.push(message);
-  logArea.innerHTML += `<p>${message}</p>`;
-}
+  log("Game Over");
 
-// Difficulty speed
-function getSpeed() {
-  if (gameState.difficulty === "hard") return 500;
-  if (gameState.difficulty === "medium") return 800;
-  return 1200;
+  alert("Game Over! Your score was: " + gameState.score);
 }
